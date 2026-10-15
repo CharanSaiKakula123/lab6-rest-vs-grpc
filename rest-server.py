@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import base64
 from flask import Flask, request, Response
 import jsonpickle
 from PIL import Image
@@ -51,12 +52,62 @@ def rawimage():
 
 @app.route('/api/dotproduct', methods=['POST'])
 def dotproduct():
-    pass
+    data = request.get_json()
+
+    a = data.get('a')
+    b = data.get('b')
+
+    if not isinstance(a, list) or not isinstance(b, list):
+        return Response(
+            response=jsonpickle.encode({'error': 'Both a and b must be lists'}),
+            status=400,
+            mimetype="application/json"
+        )
+
+    if len(a) != len(b):
+        return Response(
+            response=jsonpickle.encode({'error': 'Vectors must have the same length'}),
+            status=400,
+            mimetype="application/json"
+        )
+
+    result = sum(x * y for x, y in zip(a, b))
+
+    response_pickled = jsonpickle.encode({'dotproduct': result})
+    return Response(
+        response=response_pickled,
+        status=200,
+        mimetype="application/json"
+    )
 
 
 @app.route('/api/jsonimage', methods=['POST'])
 def jsonimage():
-    pass
+    try:
+        data = request.get_json()
+        image_data = base64.b64decode(data['image'], validate=True)
+
+        ioBuffer = io.BytesIO(image_data)
+        img = Image.open(ioBuffer)
+
+        response = {
+            'width': img.size[0],
+            'height': img.size[1]
+        }
+
+        response_pickled = jsonpickle.encode(response)
+        return Response(
+            response=response_pickled,
+            status=200,
+            mimetype="application/json"
+        )
+
+    except Exception:
+        return Response(
+            response=jsonpickle.encode({'error': 'Invalid image data'}),
+            status=400,
+            mimetype="application/json"
+        )
 
 
 if __name__ == '__main__':
